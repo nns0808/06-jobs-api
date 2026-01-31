@@ -1,80 +1,108 @@
 const Project = require('../models/Project')
 const { StatusCodes } = require('http-status-codes')
+const { BadRequestError, NotFoundError } = require('../errors')
 
-// Create project
+
+// CREATE PROJECT
+
 const createProject = async (req, res) => {
-  req.body.createdBy = req.user.userId
-  
+  const {
+    user: { userId },
+  } = req
+
+  req.body.createdBy = userId
   const project = await Project.create(req.body)
+
   res.status(StatusCodes.CREATED).json({ project })
 }
 
-// Get all projects
 
+// GET ALL PROJECTS (ONLY USER'S)
 
 const getAllProjects = async (req, res) => {
-  try {
-    const projects = await Project.find({});
-    res.status(200).json({ projects, count: projects.length });
-  } catch (error) {
-    console.error('Error in getAllProjects:', error);
-    res.status(500).json({ msg: error.message });
-  }
-};
+  const {
+    user: { userId },
+  } = req
 
-// GET single project
+  const projects = await Project.find({ createdBy: userId }).sort('createdAt')
+
+  res.status(StatusCodes.OK).json({
+    projects,
+    count: projects.length,
+  })
+}
+
+
+// GET SINGLE PROJECT
+
 const getProject = async (req, res) => {
-  const { id: projectId } = req.params
+  const {
+    user: { userId },
+    params: { id: projectId },
+  } = req
+
   const project = await Project.findOne({
     _id: projectId,
-    createdBy: req.user.userId,
+    createdBy: userId,
   })
 
   if (!project) {
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .json({ msg: `No project with id ${projectId}` })
+    throw new NotFoundError(`No project with id ${projectId}`)
   }
 
   res.status(StatusCodes.OK).json({ project })
 }
 
-// Update project
+
+// UPDATE PROJECT
+
 const updateProject = async (req, res) => {
-  const { id: projectId } = req.params
+  const {
+    body: { title, description },
+    user: { userId },
+    params: { id: projectId },
+  } = req
+
+  if (title === '' || description === '') {
+    throw new BadRequestError('Title or description cannot be empty')
+  }
 
   const project = await Project.findOneAndUpdate(
-    { _id: projectId, createdBy: req.user.userId },
+    { _id: projectId, createdBy: userId },
     req.body,
     { new: true, runValidators: true }
   )
 
   if (!project) {
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .json({ msg: `No project with id ${projectId}` })
+    throw new NotFoundError(`No project with id ${projectId}`)
   }
 
   res.status(StatusCodes.OK).json({ project })
 }
 
-// Delete project
+
+// DELETE PROJECT
+
 const deleteProject = async (req, res) => {
-  const { id: projectId } = req.params
+  const {
+    user: { userId },
+    params: { id: projectId },
+  } = req
 
   const project = await Project.findOneAndDelete({
     _id: projectId,
-    createdBy: req.user.userId,
+    createdBy: userId,
   })
 
   if (!project) {
-    return res
-      .status(StatusCodes.NOT_FOUND)
-      .json({ msg: `No project with id ${projectId}` })
+    throw new NotFoundError(`No project with id ${projectId}`)
   }
 
   res.status(StatusCodes.OK).json({ msg: 'Project removed' })
 }
+
+
+// EXPORTS
 
 module.exports = {
   createProject,
@@ -83,3 +111,4 @@ module.exports = {
   updateProject,
   deleteProject,
 }
+
