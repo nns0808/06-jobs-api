@@ -31,9 +31,10 @@ app.use(xss());
 app.use(express.json());
 
 // routes
-app.get('/', (req, res) => {
-  res.send('projects api');
-});
+// app.get('/', (req, res) => {
+//   res.send('projects api');
+// });
+app.use(express.static("public"));
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/projects', projectsRouter);
 
